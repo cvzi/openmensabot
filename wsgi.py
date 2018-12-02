@@ -2,7 +2,7 @@
 # Inspired by https://youtu.be/ufaOgM9QYk0
 
 
-    
+
 # Openshift 3 Flask app
 # In production environment you can use gunicorn --threads 8 wsgi:application
 
@@ -86,4 +86,4 @@ def myMensaBotIncoming():
 
 
 if __name__ == "__main__":
-    application.run(host='0.0.0.0', port=8080, threaded=True)
+    application.run(host='127.0.0.1', port=8080, threaded=True)
