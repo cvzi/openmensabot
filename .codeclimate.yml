@@ -1,24 +1,30 @@
 exclude_paths:
-  - stuttgart/stuttgart_old/
-  - gps/_testdata
+  - ngrok.py
+  - config.py
 engines:
   bandit:
     enabled: true
   duplication:
     enabled: false
   fixme:
-    enabled: true
+    enabled: false
   pep8:
     enabled: true
     checks:
       # Disable "Line too long"
       E501:
         enabled: false 
+      # Disable "Module level import not at top of file"
+      E402:
+        enabled: false
   radon:
-    enabled: true
+    enabled: false
   sonar-python:
     enabled: true
     checks:
       # Disable  "Rename function to match the regular expression ^[a-z_][a-z0-9_]{2,}$"
       python:S1542:
+        enabled: false
+      # Disable  "Remove this commented out code."
+      python:S125:
         enabled: false

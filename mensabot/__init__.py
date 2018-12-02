@@ -503,7 +503,7 @@ help - Hilfe
 
     def tryNaturalSpeech(self, cid, query):
         """ Try to answer with natural language, return True on success, False on failure"""
-        #self.sendMessage(cid, s, parse_mode="Markdown")
+        # self.sendMessage(cid, s, parse_mode="Markdown")
 
         return False
 
@@ -818,11 +818,9 @@ help - Hilfe
                         meal["category"].strip())
                 t += self.__escapeMarkdown(meal["name"].strip())
 
-                if showNotes:
-                    if "notes" in meal and meal["notes"] and any(
-                            meal["notes"]):
-                        t += self.__escapeMarkdown("\n" +
-                                                   " ".join([note.strip() for note in meal["notes"]]))
+                if showNotes and "notes" in meal and meal["notes"] and any(meal["notes"]):
+                    t += self.__escapeMarkdown("\n" +
+                                               " ".join([note.strip() for note in meal["notes"]]))
 
                 if showPrices and "prices" in meal and meal["prices"]:
                     if showPrices == "all":
@@ -1186,21 +1184,21 @@ help - Hilfe
         # Handle messages:
 
         if content_type in (
-            "skip_message",
-            "new_chat_member",
-            "left_chat_member",
-            "new_chat_title",
-            "new_chat_photo",
-            "delete_chat_photo",
-            "group_chat_created",
-            "supergroup_chat_created",
-            "channel_chat_created",
-            "migrate_to_chat_id",
-            "migrate_from_chat_id",
-            "pinned_message",
-            "new_chat_members",
-            "invoice",
-            "successful_payment"):
+                "skip_message",
+                "new_chat_member",
+                "left_chat_member",
+                "new_chat_title",
+                "new_chat_photo",
+                "delete_chat_photo",
+                "group_chat_created",
+                "supergroup_chat_created",
+                "channel_chat_created",
+                "migrate_to_chat_id",
+                "migrate_from_chat_id",
+                "pinned_message",
+                "new_chat_members",
+                "invoice",
+                "successful_payment"):
             print("Message ignored, content_type=`%s`" % content_type)
 
         elif content_type == 'text' and len(msg['text']) > 500:
@@ -1617,7 +1615,7 @@ help - Hilfe
                     self.s.s("*Account gelöscht* :confused_face:\n\nAlle persönlichen Daten auf meinem Server wurden entfernt."),
                     parse_mode="Markdown")
 
-            elif "/mensa" == txt or "/mensa" == txt or "/heute" == txt or "/today" == txt:
+            elif "/mensa" == txt or "/heute" == txt or "/today" == txt:
                 canteenid = 279
                 favorites = self.users.getFavorites(uid)
                 if len(favorites) > 0:
@@ -2126,9 +2124,7 @@ help - Hilfe
                     print("Message ignored, too long > 200")
                     pass
                 elif len(txt) > 2:
-                    if self.tryNaturalSpeech(cid, txt):
-                        pass
-                    else:
+                    if not self.tryNaturalSpeech(cid, txt):
                         _, ret = self.sendMensaFind(cid, query=txt)
                         if ret == 0:
                             self.tryDidYouMean(cid, txt)
