@@ -26,8 +26,7 @@ def cmpAllLettersCaseInsesitive(haystack, needle, threshold=1.0):
     haystack = haystack.lower()
 
     occurence = 0
-    for i in range(len(needle)):
-        char = needle[i]
+    for i, char in enumerate(needle):
         foundindex = haystack.find(char, i - 2 if i > 1 else 0, i + 2)
         if foundindex != -1:
             occurence += 1
@@ -46,7 +45,6 @@ def cmpAllLettersCaseInsesitiveList(haystack, needles, threshold=1.0):
 
     occurence = 0
     for needle in needles:
-        c_occurence = 0
         needle_i = 0
 
         lastMatchIndex = 0
@@ -68,7 +66,6 @@ def cmpAllLettersCaseInsesitiveList(haystack, needles, threshold=1.0):
 
             if nomatches == 3:
                 needle_i = 1
-                c_occurence = 0
                 matches = 0
                 nomatches = 0
                 i = haystack.find(needle[0], lastMatchIndex + 1)
