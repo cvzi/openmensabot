@@ -47,6 +47,7 @@ class Speak:
             ':fork_and_knife_with_plate: *%s* %s': ':fork_and_knife_with_plate: *%s* %s',
             '@OpenMensaRobot _%d_': '@OpenMensaRobot _%d_',
             '[%s](https://openmensa.org/c/%d/%s)': '[%s](https://openmensa.org/c/%d/%s)',
+            'Mehr unter [openmensa.org](https://openmensa.org/#14/%.4f/%.4f)' : 'More at [openmensa.org](https://openmensa.org/#14/%.4f/%.4f)',
 
             'Verstanden!': 'Got it!',
             'Erledigt!': 'Done!',
@@ -78,7 +79,7 @@ class Speak:
             'Montag': 'Monday',
             'montag': 'monday',
             'Dienstag': 'Tuesday',
-            'dienstag': 'tueday',
+            'dienstag': 'tuesday',
             'Mittwoch': 'Wednesday',
             'mittwoch': 'wednesday',
             'Donnerstag': 'Thursday',
