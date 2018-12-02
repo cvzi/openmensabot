@@ -1,11 +1,10 @@
 # openmensabot
 Telegram bot, shows mensa menus from openmensa.org. Supports daily push messages.  
 
-
 Live on telegram: [https://telegram.me/OpenMensaRobot](https://telegram.me/OpenMensaRobot)  
 This bot runs on Red Hat Openshift 3.
 
-## Run it locally:
+## Run it locally
 You need to change the file [mensabot/mensatoken.py](https://github.com/cvzi/openmensabot/blob/master/mensabot/mensatoken.py) 
 and add you API Token from [BotFather](https://telegram.me/botfather).  
 
