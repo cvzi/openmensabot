@@ -31,6 +31,7 @@ import users
 import mensa
 import signurl
 
+
 class Speak:
     def __init__(self, language="Deutsch"):
         self.languages = ["Deutsch", "English"]
@@ -345,12 +346,12 @@ class Bot:
         self.send = {}
         self.speak = Speak()
         self.s = self.speak
-        
+
         self._telegram_http_token = telegramToken
         self.informStatusTo = admin
-        
+
         self._googleapi = googleapi
-        
+
         self._loadEnglishCityNames()
 
         self.openmensa = mensa.OpenMensa(cacheFile=mensaCacheFile)
@@ -694,18 +695,17 @@ help - Hilfe
             (lat, lng))
         s = "\n\n".join(s)
 
-        
         if "api_key" in self._googleapi:
             googlemaps += "&key=" + self._googleapi["api_key"]
         else:
             print("No Google api_key")
-            
+
         if "client_secret" in self._googleapi:
             googlemaps = signurl.sign_url(
                 googlemaps, client_secret=self._googleapi["client_secret"])
         else:
             print("No Google client_secret, URL was not signed")
-            
+
         try:
             self.bot.sendPhoto(cid, googlemaps)
         except telepot.exception.TelegramError:
@@ -1029,7 +1029,7 @@ help - Hilfe
             return cls._inlineKeyBoard(yes, no)
         else:
             return cls._inlineKeyBoard(yes, no, other)
-            
+
     @staticmethod
     def _flags(text):
         OFFSET = ord('🇦') - ord('A')
@@ -1055,7 +1055,7 @@ help - Hilfe
     @staticmethod
     def _decorateWithEmojis(text):
         return foodemoji.decorate(text, line_by_line=False)
-    
+
     @classmethod
     def _timeTo(cls, at_time):
         dummydate = datetime.date(2000, 1, 1)
@@ -1250,7 +1250,7 @@ help - Hilfe
                         time = datetimeObj.strftime('%H:%M:%S')
 
                         if not x[3] and (nowTimestamp - x[2]) / (60 * 60 *
-                                                                 24) > 14: # Skip older than two weeks and no feedback
+                                                                 24) > 14:  # Skip older than two weeks and no feedback
                             continue
 
                     else:
@@ -1963,7 +1963,7 @@ help - Hilfe
             elif re.search(r"/?mensaimage\s*(\d+)", txt) or re.search(r"/?image\s*(\d+)", txt):
                 # /mensaimage$id /image$id
                 # TODO Sorry, this part is not open source :(
-                pass 
+                pass
 
             elif re.search(r"/?mensa\s*(\d+)", txt) or re.search(r"/?heute\s*(\d+)", txt):
                 # /mensa$id /heute$id
