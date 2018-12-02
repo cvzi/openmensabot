@@ -19,7 +19,11 @@ GOOGLEAPI_KEY = os.getenv(
     'GOOGLEAPI_KEY',
     '123456789abcdefghj123456789')  # TODO Google API key for https://maps.googleapis.com/maps/api/staticmap
 GOOGLEAPI_CLIENT_SECRET = os.getenv('GOOGLEAPI_CLIENT_SECRET', '123456789abcdef_68ifgf=')  # TODO Google client key for signing urls
-
+    'TELEGRAM_TOKEN',
+    '710871591:AAAqqqIIIcccYYYAAA222WWWvvvfffqqq777k')  # TODO Insert your Telegram Token from @BotFather
+TELEGRAM_ADMIN = int(os.getenv(
+    'TELEGRAM_ADMIN',
+    0))  # TODO Insert your personal Telegram account id here
 
 if __name__ == "__main__":
     # For local testing:
@@ -33,16 +37,17 @@ if __name__ == "__main__":
     HOSTNAME = ngrok.getUrl()
 
 
-
 print("Starting mensabot.Bot")
 import mensabot
 mensaCacheFile = os.path.join(OPENSHIFT_DATA_DIR, "mensacache.pickle")
 myMensaBot = mensabot.Bot(
+    telegramToken=TELEGRAM_TOKEN,
     mensaCacheFile=mensaCacheFile,
     postgresUrl=POSTGRES_URL,
     googleapi={
         "api_key": GOOGLEAPI_KEY,
-        "client_secret": GOOGLEAPI_CLIENT_SECRET})
+        "client_secret": GOOGLEAPI_CLIENT_SECRET},
+    admin=TELEGRAM_ADMIN)
 myMensaBotWebHook = myMensaBot.run(HOSTNAME + "/telegramWebhook")
 myMensaBot.worker()
 print("mensabot.Bot is running")
