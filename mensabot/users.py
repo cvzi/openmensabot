@@ -6,6 +6,7 @@ import datetime
 import threading
 import copy
 
+
 class PostgresStorage:
 
     def __init__(self, databaseurl=None, conn=None):
@@ -83,6 +84,7 @@ class Users:
                     self._db.storeField(uid, (key, ), (value, ))
                 elif uid in self._db.userdata and (key not in self._db.userdata[uid] or self._db.userdata[uid][key] != value):
                     # Only store if value has changed or does not exist
+                    print("Cannot store permanently")
                     self._db.storeField(uid, (key, ), (value, ))
             else:
                 data = self._db.userdata[uid]["data"] if uid in self._db.userdata and "data" in self._db.userdata[uid] else {
@@ -91,6 +93,7 @@ class Users:
                 if key not in data or data[key] != value:
                     data[key] = value
                     self._db.storeData(uid, data)
+                    print("Cannot store permanently")
 
     def _delete(self, uid, key):
         with self.__threadLockDB:
