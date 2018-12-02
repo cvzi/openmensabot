@@ -5,11 +5,13 @@ Live on telegram: [https://telegram.me/OpenMensaRobot](https://telegram.me/OpenM
 This bot runs on Red Hat Openshift 3.
 
 ## Run it locally
-You need to change the file [mensabot/mensatoken.py](https://github.com/cvzi/openmensabot/blob/master/mensabot/mensatoken.py) 
-and add you API Token from [BotFather](https://telegram.me/botfather).  
+You need to set the environment variable `TELEGRAM_TOKEN` or hardcode it in [wsgi.py](https://github.com/cvzi/openmensabot/blob/master/wsgi.py#L22) 
+to your API Token from [BotFather](https://telegram.me/botfather).  
 
 To test it locally you need a public hostname. This uses [ngrok](https://ngrok.com/), just download it, it's free and provides you
 with a public URL for the Webhook.
 Move the ngrok executable to you PATH or in this directory.  
 Then you can simply run:  
 `python3 wsgi.py`
+
+If you run it on a webserver you don't need ngrok, you can just set the environment variable `HOSTNAME=https://yourhost.example.com`
