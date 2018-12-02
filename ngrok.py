@@ -18,7 +18,7 @@ def getUrl():
 
 def start(command="ngrok http 8080"):
     # Start ngrok
-    p = subprocess.Popen(command)
+    _ = subprocess.Popen(command)
 
 
 if __name__ == '__main__':

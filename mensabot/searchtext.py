@@ -7,8 +7,7 @@ def cmpAllLetters(haystack, needle, threshold=1.0):
     """All (or threshold percent) needle letters are in the haystack and in almost (index-+1) correct order"""
 
     occurence = 0
-    for i in range(len(needle)):
-        char = needle[i]
+    for i, char in enumerate(needle):
         foundindex = haystack.find(char, i - 2 if i > 1 else 0, i + 2)
         if foundindex != -1:
             occurence += 1
@@ -107,12 +106,12 @@ def search(shortnamesId2Fullname, query):
 if __name__ == "__main__":
     from shortnames import shortnamesId2Fullname
 
-    """shortnamesId2Fullname = {
-        281: 'Heidelberg, Triplex-Mensa am Uniplatz',
-        282: 'Heidelberg, zeughaus-Mensa im Marstall',
-        283: 'Mannheim, Mensaria Metropol',
-        284: 'Mannheim, Cafeteria KUBUS',
-    }"""
+    # shortnamesId2Fullname = {
+    #     281: 'Heidelberg, Triplex-Mensa am Uniplatz',
+    #     282: 'Heidelberg, zeughaus-Mensa im Marstall',
+    #     283: 'Mannheim, Mensaria Metropol',
+    #     284: 'Mannheim, Cafeteria KUBUS',
+    # }
 
     tests = ["Heidleberg Mnesa", "manhem mensu", "mensa südstadt"]
     for test in tests:

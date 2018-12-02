@@ -2257,11 +2257,10 @@ help - Hilfe
         query_id, _, query_data = telepot.glance(
             msg, flavor='callback_query')  # query_id, from_id, query_data
 
-        """
-        try:
-            pprint(msg)
-        except:
-            pass"""
+        # try:
+        #     pprint(msg)
+        # except:
+        #     pass
 
         if "message" in msg:
 

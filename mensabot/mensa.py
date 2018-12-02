@@ -210,8 +210,8 @@ class OpenMensa:
                 continue
 
             matches = [False for sub in query]
-            for i in range(len(query)):
-                if query[i] in name or query[i] in city or query[i] in adress or query[i] in shortname:
+            for i, querypart in enumerate(query):
+                if querypart in name or querypart in city or querypart in adress or querypart in shortname:
                     matches[i] = True
             if all(matches):
                 result.append(mensa)
