@@ -1,6 +1,3 @@
-#! python3
-# Inspired by https://youtu.be/ufaOgM9QYk0
-
 import urllib.request
 import urllib.parse
 import json
@@ -43,14 +40,16 @@ class OpenMensa:
 
         self.__threadLock = threading.RLock()
 
-    def distance(self, lat0, lng0, lat1, lng1):
+    @staticmethod
+    def distance(lat0, lng0, lat1, lng1):
         # https://stackoverflow.com/questions/27928/calculate-distance-between-two-latitude-longitude-points-haversine-formula
         p = 0.017453292519943295  # Pi/180
         a = 0.5 - math.cos((lat1 - lat0) * p) / 2 + math.cos(lat0 * p) * \
             math.cos(lat1 * p) * (1 - math.cos((lng1 - lng0) * p)) / 2
         return 12742 * math.asin(math.sqrt(a))  # 2*R*asin...
 
-    def __getCacheKey(self, url, get_data=None):
+    @staticmethod
+    def __getCacheKey(url, get_data=None):
         return url + "?" + \
             urllib.parse.urlencode("" if get_data is None else get_data)
 
@@ -247,12 +246,14 @@ class OpenMensa:
 
         return "%s_%d" % (myname, i)
 
-    def getHardcodedShortName(self, canteenid):
+    @staticmethod
+    def getHardcodedShortName(canteenid):
         if canteenid in shortnamesId2Name:
             return shortnamesId2Name[canteenid]
         return False
 
-    def getIdFromHardcodedShortName(self, shortname):
+    @staticmethod
+    def getIdFromHardcodedShortName(shortname):
         if shortname in shortnamesName2Id:
             return shortnamesName2Id[shortname]
         return False

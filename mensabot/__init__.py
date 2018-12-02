@@ -1,5 +1,5 @@
 #! python3
-# Inspired by https://youtu.be/ufaOgM9QYk0
+# https://youtu.be/ufaOgM9QYk0
 
 import os
 import sys
@@ -29,7 +29,6 @@ import emoji
 import searchtext
 import users
 import mensa
-import mensatoken
 import signurl
 
 class Speak:
@@ -236,27 +235,29 @@ class Speak:
     def dateFormat(self):
         return self._dateFormat[self.i]
 
-    def s(self, str):
+    def s(self, my_str):
         if self.i > 0:
-            if str in self.data[self.i]:
-                return self.data[self.i][str]
+            if my_str in self.data[self.i]:
+                return self.data[self.i][my_str]
             else:
-                self.missing[self.i][str] = None
+                self.missing[self.i][my_str] = None
                 try:
                     print("Translation in %s needed for: \"%s\"" % (
-                        self.languages[self.i], str.encode().decode("ascii", errors='ignore')))
+                        self.languages[self.i], my_str.encode().decode("ascii", errors='ignore')))
                 except BaseException:
                     print("Translation in %s needed")
 
-        return str
+        return my_str
 
-    def __addDot(self, s):
+    @staticmethod
+    def __addDot(s):
         if re.search(r"\w$", s):
             return "%s." % s
         else:
             return s
 
-    def hello(self, text=""):
+    @staticmethod
+    def hello(text=""):
         greets = [
             'Shalom שלום',
             "Hey!",
@@ -320,7 +321,8 @@ class Speak:
         text = text[0].upper() + text[1:]
         return self.__addDot(random.choice(apologies) % text)
 
-    def randomQuote(self):
+    @staticmethod
+    def randomQuote():
         msg = ["Når katten er borte, danser musene på bordet.",
                "Som faren går fyre, kjem sonen etter.",
                "Bedre føre var enn etter snar.",
@@ -333,7 +335,7 @@ class Speak:
 
 class Bot:
 
-    def __init__(self, mensaCacheFile, postgresUrl, googleapi=None):
+    def __init__(self, telegramToken, mensaCacheFile, postgresUrl, googleapi=None, admin=0):
         self.__startTime = time.time()
 
         self.__stopFlag = [False]
@@ -342,7 +344,9 @@ class Bot:
         self.send = {}
         self.speak = Speak()
         self.s = self.speak
-        self.informStatusTo = 0  # TODO Telegram User ID of administrator account
+        
+        self._telegram_http_token = telegramToken
+        self.informStatusTo = admin
         
         self._googleapi = googleapi
         
@@ -490,7 +494,8 @@ help - Hilfe
             tmp[city.lower()] = english_cities[city].lower()
         self.english_cities = tmp
 
-    def timeNow(self):
+    @staticmethod
+    def timeNow():
         berlin = pytz.timezone('Europe/Berlin')
         return datetime.datetime.now(berlin)
 
@@ -707,32 +712,33 @@ help - Hilfe
 
         self.sendMessage(cid, s, parse_mode="Markdown")
 
-    def __formatDate(self, datetime_obj, format):
+    def __formatDate(self, datetime_obj, dateformat):
         today = self.timeNow().date()
         tomorrow = today + datetime.timedelta(days=1)
         if self.todayWord is not None and datetime_obj.date() == today:
             return self.todayWord
         elif self.tomorrowWord is not None and datetime_obj.date() == tomorrow:
-            if "%weekday" in format:
-                format = format.replace("%weekday", self.tomorrowWord)
-                return datetime_obj.strftime(format)
+            if "%weekday" in dateformat:
+                dateformat = dateformat.replace("%weekday", self.tomorrowWord)
+                return datetime_obj.strftime(dateformat)
             else:
                 return self.tomorrowWord
         else:
-            if "%weekday" in format:
+            if "%weekday" in dateformat:
                 if self.weekdays is not None:
                     w = self.weekdays[datetime_obj.weekday()]
                 else:
                     w = "%A"
-                format = format.replace("%weekday", w)
-            if "%y" not in format.lower() and datetime_obj.date(
+                dateformat = dateformat.replace("%weekday", w)
+            if "%y" not in dateformat.lower() and datetime_obj.date(
             ).year != today.year:  # Add year in case it's different
-                format += " %Y"
+                dateformat += " %Y"
 
-            return datetime_obj.strftime(format)
+            return datetime_obj.strftime(dateformat)
 
-    def __escapeMarkdown(self, str):
-        return str.replace("*", "\\*").replace("_", "\\_").replace("`", "\\`")
+    @staticmethod
+    def __escapeMarkdown(my_str):
+        return my_str.replace("*", "\\*").replace("_", "\\_").replace("`", "\\`")
 
     def formatMensaMeals(
             self,
@@ -938,7 +944,7 @@ help - Hilfe
             disable_notification=disableNotification
         )
 
-    def sendMensaFind(self, cid, query, max=50):
+    def sendMensaFind(self, cid, query):
         # Replace English city names with German equivalent
         for city in self.english_cities:
             if city in query:
@@ -999,7 +1005,8 @@ help - Hilfe
     def sendKeyboard(self, cid):
         self.sendMessageWithKeyboard(cid, self.s.s("Tastatur"))
 
-    def _inlineKeyBoard(self, *buttons):
+    @staticmethod
+    def _inlineKeyBoard(*buttons):
         inlineKeyboardButtons = [
             telepot.namedtuple.InlineKeyboardButton(
                 text=emoji.emojize(
@@ -1012,16 +1019,18 @@ help - Hilfe
 
         return keyboard
 
+    @classmethod
     def _inlineKeyBoardYesNo(
-        self, yes=(
+        cls, yes=(
             "Ja", "ja"), no=(
             "Nein", "nein"), other=None):
         if other is None:
-            return self._inlineKeyBoard(yes, no)
+            return cls._inlineKeyBoard(yes, no)
         else:
-            return self._inlineKeyBoard(yes, no, other)
-
-    def _flags(self, text):
+            return cls._inlineKeyBoard(yes, no, other)
+            
+    @staticmethod
+    def _flags(text):
         OFFSET = ord('🇦') - ord('A')
 
         def flag(code):
@@ -1042,13 +1051,15 @@ help - Hilfe
 
         return text
 
-    def _decorateWithEmojis(self, text):
+    @staticmethod
+    def _decorateWithEmojis(text):
         return foodemoji.decorate(text, line_by_line=False)
-
-    def _timeTo(self, at_time):
+    
+    @classmethod
+    def _timeTo(cls, at_time):
         dummydate = datetime.date(2000, 1, 1)
         diff = datetime.datetime.combine(
-            dummydate, at_time) - datetime.datetime.combine(dummydate, self.timeNow().time())
+            dummydate, at_time) - datetime.datetime.combine(dummydate, cls.timeNow().time())
         seconds = diff.seconds
         m, s = divmod(seconds, 60)
         h, m = divmod(m, 60)
@@ -1076,7 +1087,8 @@ help - Hilfe
 
         return self.s.s(" und ").join(re)
 
-    def __prepareEmojiSearch(self, text, emojis):
+    @staticmethod
+    def __prepareEmojiSearch(text, emojis):
         text = text.replace('\ufe0f', ' ').strip()
 
         if isinstance(emojis, str):
@@ -1108,13 +1120,15 @@ help - Hilfe
 
         return d, emojilist
 
-    def _isEmoji(self, text, emojis):
-        d, emojilist = self.__prepareEmojiSearch(text, emojis)
+    @classmethod
+    def _isEmoji(cls, text, emojis):
+        d, emojilist = cls.__prepareEmojiSearch(text, emojis)
 
         return d in emojilist
 
-    def _hasEmoji(self, text, emojis):
-        d, emojilist = self.__prepareEmojiSearch(text, emojis)
+    @classmethod
+    def _hasEmoji(cls, text, emojis):
+        d, emojilist = cls.__prepareEmojiSearch(text, emojis)
 
         for x in emojilist:
             if x in d:
@@ -1122,8 +1136,7 @@ help - Hilfe
         return False
 
     def _handleMessage(self, msg, query_id=None):
-        content_type, chat_type, cid = telepot.glance(msg)
-        message_id = msg["message_id"]
+        content_type, _, cid = telepot.glance(msg)  # content_type, chat_type, cid
 
         # pprint(msg)
         # pprint(telepot.glance(msg))
@@ -1153,33 +1166,12 @@ help - Hilfe
 
         admin = self.informStatusTo == uid
 
-        callbackAnswered = None
+        self.callbackAnswered = None
         if query_id is None:
             __returnId = cid
-
-            def say(
-                    text,
-                    parse_mode=None,
-                    disable_notification=None,
-                    reply_markup=None):
-                return self.sendMessage(
-                    __returnId,
-                    text,
-                    parse_mode=parse_mode,
-                    disable_notification=disable_notification,
-                    reply_markup=reply_markup)
         else:
             __returnId = query_id
-            callbackAnswered = False
-
-            def say(
-                    text,
-                    parse_mode=None,
-                    disable_notification=None,
-                    reply_markup=None):
-                global callbackAnswered
-                callbackAnswered = True
-                return self.bot.answerCallbackQuery(__returnId, text=text)
+            self.callbackAnswered = False
 
         # Don't post in channels without @mentionmybot
         if 'chat' in msg and 'type' in msg['chat'] and msg['chat']['type'] == "channel":
@@ -1207,9 +1199,8 @@ help - Hilfe
             "pinned_message",
             "new_chat_members",
             "invoice",
-                "successful_payment"):
+            "successful_payment"):
             print("Message ignored, content_type=`%s`" % content_type)
-            pass
 
         elif content_type == 'text' and len(msg['text']) > 500:
             # Ignore long messages
@@ -1244,8 +1235,6 @@ help - Hilfe
                 'unicode-escape').decode('ascii')))
 
             if admin and '/users' == txt:
-                all_user_ids = self.users.getUsers()
-
                 text = []
                 peoples = self.users.getStats()
                 berlin = pytz.timezone('Europe/Berlin')
@@ -1281,8 +1270,6 @@ help - Hilfe
                 self.sendMessage(cid, "\n".join(text), parse_mode="Markdown")
 
             elif admin and '/newusers' == txt:
-                all_user_ids = self.users.getUsers()
-
                 text = []
                 peoples = self.users.getStats()
                 berlin = pytz.timezone('Europe/Berlin')
@@ -2047,11 +2034,6 @@ help - Hilfe
 
                     self.users.saveFavorite(uid, canteenid)
 
-                    """
-                    buttons = []
-                    for canteenid in self.users.getFavorites(uid):
-                        buttons.append(telepot.namedtuple.KeyboardButton(text="m %s" % self.openmensa.getShortName(canteenid)))
-                    reply_markup=self._keyBoard(buttons)"""
                     self.sendMessage(
                         cid, self.speak.success(
                             self.s.s("gespeichert")))
@@ -2176,7 +2158,7 @@ help - Hilfe
                 self.speak.apologize(
                     self.s.s("damit kann ich nichts anfangen")))
 
-        if not callbackAnswered and query_id is not None:
+        if not self.callbackAnswered and query_id is not None:
             try:
                 self.bot.answerCallbackQuery(query_id)
             except telepot.exception.TelegramError as e:
@@ -2275,8 +2257,8 @@ help - Hilfe
         self.bot.answerCallbackQuery(query_id)
 
     def _handleCallbackQuery(self, msg):
-        query_id, from_id, query_data = telepot.glance(
-            msg, flavor='callback_query')
+        query_id, _, query_data = telepot.glance(
+            msg, flavor='callback_query')  # query_id, from_id, query_data
 
         """
         try:
@@ -2285,7 +2267,6 @@ help - Hilfe
             pass"""
 
         if "message" in msg:
-            message_id = msg["message"]["message_id"]
 
             message = msg["message"]
             message["text"] = query_data
@@ -2299,8 +2280,8 @@ help - Hilfe
     def _handleInlineQuery(self, msg):
 
         def compute():
-            query_id, from_id, query_string = telepot.glance(
-                msg, flavor='inline_query')
+            _, from_id, query_string = telepot.glance(
+                msg, flavor='inline_query')  # query_id, from_id, query_string
 
             uid = from_id
             uname = None
@@ -2607,7 +2588,7 @@ help - Hilfe
 
         self.status += " Running"
 
-        self.bot = telepot.Bot(mensatoken.HTTP_TOKEN)
+        self.bot = telepot.Bot(self._telegram_http_token)
         self.answerer = telepot.helper.Answerer(self.bot)
 
         self._webhook = OrderedWebhook(self.bot, {
@@ -2640,7 +2621,7 @@ help - Hilfe
             print("Already running, cannot delete webhook")
             return False
 
-        self.bot = telepot.Bot(mytoken.HTTP_TOKEN)
+        self.bot = telepot.Bot(self._telegram_http_token)
         return self.bot.deleteWebhook()
 
     def worker(self):
@@ -2659,8 +2640,13 @@ help - Hilfe
                 self.__myMensaBot = myMensaBot
 
             def run(self):
+                stopfile = os.path.join(
+                    os.getenv(
+                        "OPENSHIFT_DATA_DIR",
+                        "data"),
+                    'mensabot/mensabotstop')
                 while True:
-                    if stopFlag[0]:
+                    if stopFlag[0] or os.path.isfile(stopfile):
                         self.__myMensaBot.status += " StoppingWorker"
                         print("Stopping worker")
                         break
@@ -2692,7 +2678,7 @@ help - Hilfe
                     time.sleep(20)
 
                 # Exit gracefully:
-                if stopFlag[0]:
+                if stopFlag[0] or os.path.isfile(stopfile):
                     # Remove webhook:
                     self.__myMensaBot.bot.deleteWebhook()
                     self.__myMensaBot.status += " StoppedBot"
@@ -2700,6 +2686,6 @@ help - Hilfe
                 self.__myMensaBot.status += " StoppedWorking"
                 print("Stopped Worker thread")
 
-        self.worker = MyWorker(self)
-        self.worker.daemon = True
-        self.worker.start()
+        self.myWorker = MyWorker(self)
+        self.myWorker.daemon = True
+        self.myWorker.start()
