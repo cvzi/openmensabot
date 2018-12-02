@@ -1,5 +1,9 @@
+gunicorn
 Flask
-
+requests
 telepot
-emoji
 pytz
+aiohttp==3.0.1
+#psycopg2
+emoji>=0.5.1
+german-foodemoji>=1.1.1
