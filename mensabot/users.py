@@ -3,11 +3,8 @@
 
 import time
 import datetime
-import os
 import threading
 import copy
-#import psycopg2
-import json
 
 class PostgresStorage:
 
@@ -19,7 +16,7 @@ class PostgresStorage:
 
     def storeField(self, uid, fields, values):
         # Store data in a specific field
-        
+
         if not isinstance(fields, tuple) and not isinstance(fields, list):
             fields = (fields, )
         if not isinstance(values, tuple) and not isinstance(values, list):
@@ -35,18 +32,18 @@ class PostgresStorage:
                 raise ValueError(
                     "'field' must be one of %r. Found %r" %
                     (self.fields, field))
-                    
+
         # TODO Sorry, Postgres queries are not open source :(
-        
+
         if uid not in self.userdata:
             self.userdata[uid] = {}
-        
+
         for field, value in zip(fields, values):
             self.userdata[uid][field] = value
 
     def storeData(self, uid, data):
         # Store data in the arbitrary 'data' field as json data
-        
+
         # TODO Sorry, Postgres queries are not open source :(
         if uid not in self.userdata:
             self.userdata[uid] = {}
