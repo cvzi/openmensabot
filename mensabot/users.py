@@ -81,10 +81,9 @@ class Users:
                         uid, (key, "firstContact"), (value, time.time()))
                 elif uid not in self._db.userdata:
                     self._db.storeField(uid, (key, ), (value, ))
-                elif uid in self._db.userdata:
-                    # Only store if value has changed
-                    if key not in self._db.userdata[uid] or self._db.userdata[uid][key] != value:
-                        self._db.storeField(uid, (key, ), (value, ))
+                elif uid in self._db.userdata and (key not in self._db.userdata[uid] or self._db.userdata[uid][key] != value):
+                    # Only store if value has changed or does not exist
+                    self._db.storeField(uid, (key, ), (value, ))
             else:
                 data = self._db.userdata[uid]["data"] if uid in self._db.userdata and "data" in self._db.userdata[uid] else {
                 }

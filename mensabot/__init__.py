@@ -48,7 +48,7 @@ class Speak:
             ':fork_and_knife_with_plate: *%s* %s': ':fork_and_knife_with_plate: *%s* %s',
             '@OpenMensaRobot _%d_': '@OpenMensaRobot _%d_',
             '[%s](https://openmensa.org/c/%d/%s)': '[%s](https://openmensa.org/c/%d/%s)',
-            'Mehr unter [openmensa.org](https://openmensa.org/#14/%.4f/%.4f)' : 'More at [openmensa.org](https://openmensa.org/#14/%.4f/%.4f)',
+            'Mehr unter [openmensa.org](https://openmensa.org/#14/%.4f/%.4f)': 'More at [openmensa.org](https://openmensa.org/#14/%.4f/%.4f)',
 
             'Verstanden!': 'Got it!',
             'Erledigt!': 'Done!',
@@ -1285,7 +1285,7 @@ help - Hilfe
                         time = datetimeObj.strftime('%H:%M:%S')
 
                         if (nowTimestamp - x[2]) / (60 * 60 *
-                                                    24) > 30: # Skip older than a month
+                                                    24) > 30:  # Skip older than a month
                             continue
 
                     else:
@@ -1942,8 +1942,8 @@ help - Hilfe
                 else:
                     if "address" in mensa:
                         address = mensa["address"]
-                        #googlemaps = "http://maps.google.com/maps?q=%s&z=15" % urllib.parse.quote_plus(address);
-                        #self.sendMessage(cid, "[%s](%s)" % (address, googlemaps), parse_mode="Markdown")
+                        # googlemaps = "http://maps.google.com/maps?q=%s&z=15" % urllib.parse.quote_plus(address);
+                        # self.sendMessage(cid, "[%s](%s)" % (address, googlemaps), parse_mode="Markdown")
                     self.bot.sendVenue(
                         cid,
                         latitude=mensa["coordinates"][0],

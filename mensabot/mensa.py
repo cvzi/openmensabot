@@ -112,7 +112,7 @@ class OpenMensa:
         with self.__threadLock:
             if self.__isCached(cachekey, expire):
                 data = self._cache[cachekey][1]
-                #print("OpenMensa: CACHE: %s" % cachekey)
+                # print("OpenMensa: CACHE: %s" % cachekey)
             else:
                 data = self._getJSON(url, get_data)
                 self._cache[cachekey] = (time.time(), data)
@@ -138,7 +138,7 @@ class OpenMensa:
                             (canteen, day['date']))
                         return (day['date'], data, True)
 
-            elif day['closed'] == False:
+            elif not day['closed']:
                 # offsetDays
                 i += 1
                 if i == offsetDays:
@@ -230,7 +230,7 @@ class OpenMensa:
                 mymensa = mensa
                 break
         if mymensa is None:
-            #print("Mensa id=%s not found" % str(canteenid))
+            # print("Mensa id=%s not found" % str(canteenid))
             return False
 
         i = 0
@@ -281,7 +281,7 @@ class OpenMensa:
                 else:
                     return mensa["id"]
 
-        #print("Mensa short=%s not found" % str(shortname))
+        # print("Mensa short=%s not found" % str(shortname))
         return False
 
     def getMensa(self, canteenid):

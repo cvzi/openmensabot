@@ -1,8 +1,6 @@
 #! python3
 # Inspired by https://youtu.be/ufaOgM9QYk0
 
-
-
 # Openshift 3 Flask app
 # In production environment you can use gunicorn --threads 8 wsgi:application
 
@@ -10,24 +8,33 @@ import os
 from flask import Flask, request, redirect
 application = Flask(__name__)
 
-HOSTNAME = r"https://123.starter-us-east-1.openshiftapps.com"  # TODO your host name here
+# TODO your host name here
+HOSTNAME = r"https://123.starter-us-east-1.openshiftapps.com"
+# TODO your postgres database
 POSTGRES_URL = os.getenv(
     'POSTGRES_URL',
-    'postgres://user:password@hostname.example.com:1234/databasename')  # TODO your postgres database
-OPENSHIFT_DATA_DIR = os.getenv("OPENSHIFT_DATA_DIR", "./data")  # TODO Cache storage location, persistent or temporary
-GOOGLEAPI_KEY = os.getenv(
-    'GOOGLEAPI_KEY',
-    '123456789abcdefghj123456789')  # TODO Google API key for https://maps.googleapis.com/maps/api/staticmap
-GOOGLEAPI_CLIENT_SECRET = os.getenv('GOOGLEAPI_CLIENT_SECRET', '123456789abcdef_68ifgf=')  # TODO Google client key for signing urls
+    'postgres://user:password@hostname.example.com:1234/databasename')
+# TODO Cache storage location, persistent or temporary
+OPENSHIFT_DATA_DIR = os.getenv("OPENSHIFT_DATA_DIR", "./data")
+# TODO Google API key for https://maps.googleapis.com/maps/api/staticmap
+GOOGLEAPI_KEY = os.getenv('GOOGLEAPI_KEY', '123456789abcdefghj123456789')
+# TODO Google client key for signing urls
+GOOGLEAPI_CLIENT_SECRET = os.getenv(
+    'GOOGLEAPI_CLIENT_SECRET',
+    '123456789abcdef_68ifgf=')
+# TODO Insert your Telegram Token from @BotFather
+TELEGRAM_TOKEN = os.getenv(
     'TELEGRAM_TOKEN',
-    '710871591:AAAqqqIIIcccYYYAAA222WWWvvvfffqqq777k')  # TODO Insert your Telegram Token from @BotFather
+    '710871591:AAAqqqIIIcccYYYAAA222WWWvvvfffqqq777k')
+# TODO Insert your personal Telegram account id here
 TELEGRAM_ADMIN = int(os.getenv(
     'TELEGRAM_ADMIN',
-    0))  # TODO Insert your personal Telegram account id here
+    0))
 
 if __name__ == "__main__":
     # For local testing:
-    # Start ngrok server to get a public hostname. See: https://ngrok.com/download
+    # Start ngrok server to get a public hostname. See:
+    # https://ngrok.com/download
     print("Starting ngrok")
     import ngrok
     ngrok.start()
