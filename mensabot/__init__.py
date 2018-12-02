@@ -756,7 +756,7 @@ help - Hilfe
         date = None
         if day is not None:
             datetime_day = datetime.datetime.strptime(day, '%Y-%m-%d')
-            date = self.__formatDate(datetime_day, format=self.s.dateFormat())
+            date = self.__formatDate(datetime_day, dateformat=self.s.dateFormat())
 
         if not ret:
             if mensa is not None and "city" in mensa:
@@ -2523,7 +2523,7 @@ help - Hilfe
                                 day, '%Y-%m-%d')
                             dateformat = self.s.dateFormat()
                             date = self.__formatDate(
-                                datetime_day, format=dateformat)
+                                datetime_day, dateformat=dateformat)
                         articles = [
                             Article(
                                 id='canteen%d' %
