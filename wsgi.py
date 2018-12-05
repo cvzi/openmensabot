@@ -9,7 +9,9 @@ from flask import Flask, request, redirect
 application = Flask(__name__)
 
 # TODO your host name here
-HOSTNAME = r"https://123.starter-us-east-1.openshiftapps.com"
+PUBLIC_URL = os.getenv(
+    'PUBLIC_URL',
+    'https://123.starter-us-east.openshiftapps.com')
 # TODO your postgres database
 POSTGRES_URL = os.getenv(
     'POSTGRES_URL',
@@ -41,7 +43,7 @@ if __name__ == "__main__":
     import time
     print("Wait for ngrok . . . ")
     time.sleep(3)
-    HOSTNAME = ngrok.getUrl()
+    PUBLIC_URL = ngrok.getUrl()
 
 
 print("Starting mensabot.Bot")
@@ -55,7 +57,7 @@ myMensaBot = mensabot.Bot(
         "api_key": GOOGLEAPI_KEY,
         "client_secret": GOOGLEAPI_CLIENT_SECRET},
     admin=TELEGRAM_ADMIN)
-myMensaBotWebHook = myMensaBot.run(HOSTNAME + "/telegramWebhook")
+myMensaBotWebHook = myMensaBot.run(PUBLIC_URL + "/telegramWebhook")
 myMensaBot.worker()
 print("mensabot.Bot is running")
 

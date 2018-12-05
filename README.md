@@ -14,4 +14,4 @@ Move the ngrok executable to you PATH or in this directory.
 Then you can simply run:  
 `python3 wsgi.py`
 
-If you run it on a webserver you don't need ngrok, you can just set the environment variable `HOSTNAME=https://yourhost.example.com`
+If you run it on a webserver you don't need ngrok, you can just set the environment variable `PUBLIC_URL=https://yourhost.example.com`
