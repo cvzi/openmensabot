@@ -3,7 +3,7 @@ Flask
 requests
 telepot
 pytz
-aiohttp==3.0.1
+aiohttp==3.7.4
 #psycopg2
 emoji>=0.5.1
 german-foodemoji>=1.1.1
