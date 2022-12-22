@@ -76,7 +76,12 @@ def cmpAllLettersCaseInsesitiveList(haystack, needles, threshold=1.0):
 
         occurence += matches
 
-    if occurence / sum([len(needle) for needle in needles]) >= threshold:
+    mSum = sum([len(needle) for needle in needles])
+
+    if mSum == 0:
+        return False
+
+    if occurence / mSum >= threshold:
         return True
 
     return False

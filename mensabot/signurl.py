@@ -1,4 +1,5 @@
 from requests.packages.urllib3.util import parse_url
+from urllib.parse import quote, unquote
 import hashlib
 import hmac
 import base64
@@ -31,13 +32,17 @@ def sign_url(input_url=None, client_id=None, client_secret=None):
         raise ValueError("Expected arguments input_url and client_secret")
 
     # Add the Client ID to the URL
+    delimeter = '&' if '?' in input_url else '?'
     if client_id:
-        input_url += "&client=%s" % (client_id)
+        input_url += "%sclient=%s" % (delimeter, client_id)
+        delimeter = '&'
 
     url = parse_url(input_url)
 
     # We only need to sign the path+query part of the string
-    url_to_sign = url.path + "?" + url.query
+    url_to_sign = url.path
+    if url.query:
+        url_to_sign += "?" + url.query
 
     # Decode the private key into its binary format
     # We need to decode the URL-encoded private key
@@ -50,10 +55,10 @@ def sign_url(input_url=None, client_id=None, client_secret=None):
     # Encode the binary signature into base64 for use within a URL
     encoded_signature = base64.urlsafe_b64encode(signature.digest())
 
-    original_url = url.scheme + "://" + url.netloc + url.path + "?" + url.query
+    original_url = url.scheme + "://" + url.netloc + url.path + ("?" + url.query if url.query else '')
 
     # Return signed URL
-    return original_url + "&signature=" + encoded_signature.decode()
+    return original_url + delimeter + "signature=" + quote(encoded_signature.decode())
 
 
 def check_url(input_url=None, client_secret=None):
@@ -80,9 +85,14 @@ def check_url(input_url=None, client_secret=None):
     url = parse_url(input_url)
 
     # Extract signature
+    if not url.query:
+        return False
+
     parts = url.query.rsplit("&signature=", 1)
     if len(parts) != 2:
-        return False
+        parts = url.query.rsplit("signature=", 1)
+        if len(parts) != 2:
+            return False
 
     # If signature was not the last part of the url, reorder it:
     if "&" in parts[1]:
@@ -93,7 +103,9 @@ def check_url(input_url=None, client_secret=None):
     actual_signature = parts[1]
 
     # We only need to sign the path+query part of the string
-    url_to_sign = url.path + "?" + query
+    url_to_sign = url.path
+    if query:
+        url_to_sign += "?" + (query[1:] if query.startswith('&') else query)
 
     # Decode the private key into its binary format
     # We need to decode the URL-encoded private key
@@ -106,4 +118,4 @@ def check_url(input_url=None, client_secret=None):
     # Encode the binary signature into base64 for use within a URL
     encoded_signature = base64.urlsafe_b64encode(signature.digest())
 
-    return encoded_signature.decode() == actual_signature
+    return encoded_signature.decode() == unquote(actual_signature, errors='strict')

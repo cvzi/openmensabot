@@ -9,12 +9,12 @@ import pickle
 import threading
 import os
 
-from shortnames import shortnamesId2Name, shortnamesName2Id, shortnamesId2Fullname
+from shortnames import shortnamesId2Name, shortnamesName2Id, shortnamesId2Fullname, specialNames
 
 
 class OpenMensa:
 
-    def __init__(self, cacheFile='data/mensacache.pickle'):
+    def __init__(self, storage=None, cacheFile='data/mensacache.pickle', expireOnRestart=2500):
         self.userAgentStr = "OpenMensaRobot Python-urllib/%s" % urllib.request.__version__
         self.originHostName = "example.com"  # TODO Set hostname
         self.referer = "https://example.com"  # TODO Set referer
@@ -23,22 +23,58 @@ class OpenMensa:
         self.shortnamesName2Id = shortnamesName2Id  # {'mgdbca': 1,  ...}
         # {1: 'Magdeburg, Mensa UniCampus',  ...}
         self.shortnamesId2Fullname = shortnamesId2Fullname
+        self.specialNames = specialNames
+        self.showMissmatchHint = True
 
         self._cacheFile = cacheFile
         self._cache = {}
-        if os.path.isfile(self._cacheFile):
-            with open(self._cacheFile, "rb") as fs:
-                self._cache = pickle.load(fs)
-                print("OpenMensa: cache file loaded: %s" % self._cacheFile)
+        self._lastReload = 0
+
+        if storage:
+            self._storage = storage
+            self._cache = self._storage.load()
+            self._lastReload = time.time()
+            print("OpenMensa: cache loaded from database: %d entries" % len(self._cache))
+            if len(self._cache) > 500:
+                print("OpenMensa: cache is quite big, cleaning up...")
+                old = time.time() - expireOnRestart
+                popkeys = []
+                for cachekey in self._cache:
+                    if not self._cache[cachekey] or not self._cache[cachekey][0] or old > self._cache[cachekey][0]:
+                        popkeys.append(cachekey)
+                for cachekey in popkeys:
+                    if cachekey in self._cache:
+                        self._cache.pop(cachekey, None)
+                print("OpenMensa: ... now %d entries" % len(self._cache))
+
         else:
-            dirname = os.path.dirname(self._cacheFile)
-            if not os.path.exists(dirname):
-                os.makedirs(dirname, exist_ok=True)
+            self._storage = None
+            if os.path.isfile(self._cacheFile):
+                with open(self._cacheFile, "rb") as fs:
+                    self._cache = pickle.load(fs)
+                    print("OpenMensa: cache loaded from file: %s" % self._cacheFile)
+            else:
+                dirname = os.path.dirname(self._cacheFile)
+                if not os.path.exists(dirname):
+                    os.makedirs(dirname, exist_ok=True)
 
         self.__shortNameCache = {}
         self.__shortNamePattern = re.compile(r"\W")
 
         self.__threadLock = threading.RLock()
+
+    def clearCache(self):
+        self._cache = {}
+        if self._storage:
+            with self.__threadLock:
+                self._storage.clear()
+            self._reload()
+
+    def _reload(self):
+        if self._storage and time.time() - self._lastReload > 5.0:  # Cache is outdated after 5 seconds
+            with self.__threadLock:
+                self._cache = self._storage.load()
+                self._lastReload = time.time()
 
     @staticmethod
     def distance(lat0, lng0, lat1, lng1):
@@ -73,7 +109,7 @@ class OpenMensa:
             url_get = url
 
         # Valid URL?
-        if not url.startswith("http://") and not url.startswith("https://"):
+        if not url.startswith("https://"):
             raise RuntimeError("URL does not start with http")
 
         print("OpenMensa: GET: %s" % url_get)
@@ -108,6 +144,8 @@ class OpenMensa:
         return data
 
     def _getJSONCached(self, url, get_data=None, expire=1800):
+        self._reload()
+
         cachekey = self.__getCacheKey(url, get_data)
         with self.__threadLock:
             if self.__isCached(cachekey, expire):
@@ -116,17 +154,29 @@ class OpenMensa:
             else:
                 data = self._getJSON(url, get_data)
                 self._cache[cachekey] = (time.time(), data)
-                with open(self._cacheFile, "wb") as fs:
-                    pickle.dump(self._cache, fs)
+                if self._storage is not None:
+                    # Store in database cache
+                    self._storage.store(self._cache)
+                else:
+                    # Store in file cache
+                    with open(self._cacheFile, "wb") as fs:
+                        pickle.dump(self._cache, fs)
+
         return data
 
     def getNextMeal(self, canteen, offsetDays=0, at_day=None):
         days = self._getJSONCached(
             'https://openmensa.org/api/v2/canteens/%d/days' %
             canteen)
+        days.sort(key=lambda o: o["date"])
 
         i = -1
         for day in days:
+            if day['date'].startswith('40'):
+                # Some canteens contain faulty data: the date/year is 4012, skip these
+                # e.g. https://openmensa.org/api/v2/canteens/36/days
+                continue
+
             if at_day is not None:
                 if at_day == day['date']:
                     # at_day
@@ -156,11 +206,17 @@ class OpenMensa:
         url = 'https://openmensa.org/api/v2/canteens/%d/days' % canteen
         if self.__isCached(self.__getCacheKey(url), expire):
             days = self._getJSONCached(url)
+            days.sort(key=lambda o: o["date"])
             if datetime.now().time() > datetime.strptime("15:00", '%H:%M').time():
                 days = days[1:] if len(days) else []
 
             day = None
             for day in days:
+                if day['date'].startswith('40'):
+                    # Some canteens contain faulty data: the date/year is 4012, skip these
+                    # e.g. https://openmensa.org/api/v2/canteens/36/days
+                    continue
+
                 if not day['closed']:
                     url = 'https://openmensa.org/api/v2/canteens/%d/days/%s/meals' % (
                         canteen, day['date'])
@@ -175,22 +231,29 @@ class OpenMensa:
         return None  # Days not in cache
 
     def findMensaNear(self, lat=49.405479, lng=8.683767, dist=20):
-        url = 'http://openmensa.org/api/v2/canteens'
+        url = 'https://openmensa.org/api/v2/canteens'
 
         return self._getJSONCached(
             url, {"near[lat]": lat, "near[lng]": lng, "near[dist]": dist})
 
     def findMensaAll(self):
-        url = 'http://openmensa.org/api/v2/canteens'
+        url = 'https://openmensa.org/api/v2/canteens'
 
         data = self._getJSONCached(url, get_data={"limit": 9999}, expire=86400)
 
-        if len(data) != len(self.shortnamesId2Name):
-            print(
-                "len(findMensaAll) = %d  !=  len(shortnames) = %d\nUpdate shortnames?" %
-                (len(data), len(
-                    self.shortnamesId2Name)))
+        if self.showMissmatchHint:
+            canteenIds = set(c["id"] for c in data)
+            shortnameIds = set(self.shortnamesId2Name.keys())
+            missingInShortnames = canteenIds.difference(shortnameIds)
+            noLongerInCanteens = shortnameIds.difference(canteenIds)
+            if missingInShortnames:
+                print("The following canteen ids are missing their shortnames:")
+                print(sorted(missingInShortnames))
+            if noLongerInCanteens:
+                print("The following canteen ids have a shortname but are not longer available or currenty inactive:")
+                print(sorted(noLongerInCanteens))
 
+            self.showMissmatchHint = False
         return data
 
     def findMensaByString(self, query):
@@ -292,3 +355,160 @@ class OpenMensa:
 
         print("Mensa id=%s not found" % str(canteenid))
         return None
+
+
+class CacheStorage:
+    def __init__(self, databaseurl=None, conn=None):
+        self.__databaseurl = databaseurl
+        if not conn:
+            self.conn = psycopg2.connect(databaseurl, sslmode='require')
+
+        else:
+            self.conn = conn
+
+        cur = self.conn.cursor()
+        try:
+            cur.execute("""
+        CREATE TABLE IF NOT EXISTS cache (
+            id       SERIAL,
+            data     JSONB,
+            CONSTRAINT uniqueid UNIQUE(id)
+        )""")
+
+            self.conn.commit()
+
+        except (Exception, psycopg2.DatabaseError) as error:
+            print("Postgres CREATE TABLE cache failed: %s" % str(error))
+        finally:
+            if self.conn:
+                try:
+                    self.conn.commit()
+                except:
+                    pass
+            if cur is not None:
+                try:
+                    cur.close()
+                except:
+                    pass
+
+    def setDatabaseUrl(self, databaseurl):
+        self.__databaseurl = databaseurl
+
+    def _reconnect(self):
+        """ Try to reconnect after lost connection"""
+        if self.__databaseurl is None:
+            raise Exception("Cannnot _reconnent, no databaseurl found.")
+        try:
+            self.conn.commit()
+        except BaseException:
+            pass
+        try:
+            self.conn.close()
+        except BaseException:
+            pass
+        try:
+            self.conn = psycopg2.connect(self.__databaseurl, sslmode='require')
+            return True
+        except psycopg2.InterfaceError as error:
+            print(error.message)
+
+        return False
+
+    def store(self, data):
+        cur = self.conn.cursor()
+
+        jdata = json.dumps(data)
+
+        try:
+            cur.execute("""UPDATE cache SET data = %s RETURNING 1""", (jdata, ))
+
+            r = cur.fetchone()
+            if not r or r[0] != 1:
+                cur.execute("""INSERT INTO cache (data) values (%s)""", (jdata, ))
+
+            self.conn.commit()
+
+        except (Exception, psycopg2.DatabaseError) as error:
+            print("Postgres UPDATE/INSERT cache failed: %s" % str(error))
+
+        finally:
+            if self.conn:
+                try:
+                    self.conn.commit()
+                except e0:
+                    print(e0)
+                    try:
+                        print("Reconnecting...")
+                        self._reconnect()
+                    except e1:
+                        print(e)
+
+            if cur is not None:
+                try:
+                    cur.close()
+                except:
+                    pass
+
+
+    def load(self):
+        result = {}
+
+        cur = self.conn.cursor()
+        try:
+            cur.execute("Select data from cache ORDER BY id DESC LIMIT 1")
+            r = cur.fetchone()
+            if r and r[0]:
+                result = r[0]
+
+        except (Exception, psycopg2.DatabaseError) as error:
+            print("Postgres SELECT cache Error: %s" % str(error))
+        finally:
+            if cur is not None:
+                try:
+                    cur.close()
+                except:
+                    pass
+
+        if len(result) > 1300:
+            # Too big, let's start fresh
+            self.clear()
+            return {}
+
+        return result
+
+    def clear(self):
+        cur = self.conn.cursor()
+
+        try:
+            cur.execute("DELETE FROM cache")
+
+            self.conn.commit()
+
+        except (Exception, psycopg2.DatabaseError) as error:
+            print("Postgres clear() failed: %s" % str(error))
+
+        finally:
+            if self.conn:
+                try:
+                    self.conn.commit()
+                except e0:
+                    print(e0)
+                    try:
+                        print("Reconnecting...")
+                        self._reconnect()
+                    except e1:
+                        print(e)
+
+            if cur is not None:
+                try:
+                    cur.close()
+                except:
+                    pass
+
+#
+# Below for testing only
+#
+if __name__ == '__main__':
+    o = OpenMensa()
+    x = o.getNextMeal(canteen=279)
+    print(x)

@@ -10,7 +10,7 @@ import urllib.request
 import re
 import random
 
-from pprint import pprint
+import pprint
 import time
 import copy
 import traceback
@@ -58,7 +58,7 @@ class Speak:
             'Nein': 'No',
             'Ja': 'Yes',
             'das verstehe ich nicht': 'I don\'t understand',
-            'Wissenschaftler haben herausgefunden, dass es sich um ein %s handelt.\n': 'Exports say it\'s a %s.\n',
+            'Wissenschaftler haben herausgefunden, dass es sich um ein %s handelt.\n': 'Experts say it\'s a %s.\n',
             'was soll ich damit?!': 'I don\'t know what to do with that.',
 
             'Tastatur': 'Keyboard',
@@ -119,6 +119,7 @@ class Speak:
             'zu viele Suchergebnisse!\nDu kannst es mit einem spezifischeren Suchbegriff versuchen': 'too many search results!\nCould you try a more specific search query',
             'Zu viele Ergebnisse': 'Too many search results',
             'zu viele Ergebnisse. Bitte spezifiere den Suchbegriff': 'Too many results, please be more specific',
+            'Oder sende mir deinen Ort als Anhang': 'Or send your location as an attachment',
             'Oder gib einen spezifischen Suchbegriff ein, damit du nur ein Ergebnis erhältst, dann wird der Speiseplan direkt angezeigt': 'Or be more specific next time. If you receive only one search result, I can directly send you the canteen menu',
             '\n\nBeispiel:\n@OpenMensaRobot %s\n\nOder gibt die ID der Mensa an:\n@OpenMensaRobot %d': '\n\nExample:\n@OpenMensaRobot %s\n\nOr use the unique mensa id:\n@OpenMensaRobot %d',
 
@@ -142,7 +143,10 @@ class Speak:
             'Der Benachrichtigungston ist ausgeschaltet.\n': 'Notification sounds are disabled.\n',
             'Der Benachrichtigungston ist eingeschaltet.\n': 'Notification sounds are activated\n',
 
+            'Falls du täglich das Menü bekommen möchtest, benutze /push um Pushbenachrichtigungen zu aktivieren' : 'If you would like to receive the canteen menu daily, you can use the command /push now',
+
             'Nächste Nachricht in ungefähr %s.': 'Next notification in approximately %s.',
+            'Die Uhrzeit für Benachrichtigungen is momentan auf 8:00 bis 14:30 begrenzt' : 'Push messages are currently limited to 8:00am to 2:30pm',
 
             '/enableEmojis Emojis in Speiseplänen anzeigen\n': '/enableEmojis to enable emojis in canteen menus\n',
             '/disableEmojis Keine Emojis in Speiseplänen anzeigen\n': '/disableEmojis to disable emojis in canteen menus\n',
@@ -150,6 +154,7 @@ class Speak:
             ':thumbs_up: Emojis in Speiseplänen aktiviert :smiling_cat_face_with_heart-eyes:': ':thumbs_up: Emojis in menus are now activated :smiling_cat_face_with_heart-eyes:',
 
             'Sende mir einfach deine aktuelle Position oder schreibe mir den Namen deiner Stadt\n': 'Just send your current GPS location or write me the name of your city or canteen\n',
+            'Sende mir einfach deine aktuelle Position oder schreibe mir den Namen deiner Stadt': 'Just send your current GPS location or write me the name of your city or canteen',
 
             'Position senden': 'Send GPS position',
             'in deiner Nähe (%dkm) habe ich nichts gefunden.': 'I did not find any canteens in your area (%dkm)',
@@ -159,6 +164,7 @@ class Speak:
             'für %s habe ich keine genaue Position oder Adresse': 'unfortunately, I don\'t have a position or adress for %s',
 
             'Andere Befehle:\n': 'Other commands:\n',
+            'Befehle:\n': 'Commands:\n',
             '(Ersetze {id} durch die ID deiner Mensa)\n': '(replace {id} with your canteen ID)\n',
             'Folgende Befehle könnten nützlich sein:': 'The following commands could now be useful:',
 
@@ -169,8 +175,16 @@ class Speak:
             'Deine Favoriten:\n%s\n\nUm eine Mensa zu entfernen, klick auf den Mensa Link und dann auf das :broken_heart:': 'Your favorites:\n%s\n\nTo remove a canteen, click on the canteen link and then on the :broken_heart:',
 
             '/about Über diesen Bot': '/about this bot',
+            '/about Über diesen Bot\n': '/about this bot\n',
+
+            '/mydata Kopie deiner Daten gemäß GDPR\n' : '/mydata Download a copy of your data according to GDPR\n',
+
             '/help Noch mehr Hilfe und mehr Befehle\n': '/help Find more help and more commands\n',
             '/finde /findeHamburg Finde Mensen anhand ihres Namens\n': '/find /findHamburg Find canteens by their name\n',
+            'Befehlformat: /findeHamburg - Sucht Mensen in Hamburg': 'Command format: /findHamburg - Search for canteens in Hamburg',
+            'oder schreibe mir einfach nur: Hamburg': 'or just send me: Hamburg',
+
+
             '/mensa123 oder /heute123: Speiseplan der Mensa 123 anzeigen\n': '/mensa123 Canteen menu of canteen with ID 123\n',
             '/merke123 Mensa als Favorit speichern\n': '/merke123 Save canteen 123 as a favorite\n',
 
@@ -354,11 +368,12 @@ class Bot:
 
         self._loadEnglishCityNames()
 
-        self.openmensa = mensa.OpenMensa(cacheFile=mensaCacheFile)
+        self.users = users.Users(nowTime=self.timeNow(), databaseurl=postgresUrl)
 
-        self.users = users.Users(
-            nowTime=self.timeNow().time(),
-            databaseurl=postgresUrl)
+        #self.openmensa = mensa.OpenMensa(cacheFile=mensaCacheFile)
+        cacheStorage = mensa.CacheStorage(conn=self.users.postgresConnection())
+        cacheStorage.setDatabaseUrl(postgresUrl)
+        self.openmensa = mensa.OpenMensa(storage=cacheStorage)
 
         self.setLanguage(self.speak.getDefaultLanguage())
 
@@ -583,7 +598,7 @@ help - Hilfe
 
         text = text[0].upper() + text[1:]
 
-        text = emoji.emojize(text, use_aliases=True)
+        text = emoji.emojize(text, language='alias')
 
         N = 1600
 
@@ -955,12 +970,19 @@ help - Hilfe
                 self.s.s("nichts gefunden.")) + "\n" + emoji.emojize(query)), 0
 
         if len(mensas) > 50:
-            return self.sendMessage(cid, self.speak.apologize(self.s.s(
-                "zu viele Suchergebnisse!\nDu kannst es mit einem spezifischeren Suchbegriff versuchen"))), -1
+            return self.sendMessage(cid, self.speak.apologize(
+                self.s.s("zu viele Suchergebnisse!\nDu kannst es mit einem spezifischeren Suchbegriff versuchen") + "\n" +
+                self.s.s("Oder sende mir deinen Ort als Anhang")
+                )), -1
 
         s = [self.s.s("Klick auf deine Mensa:")]
         for mensa in mensas:
-            t = "/mensa%d %s" % (mensa["id"], mensa["name"])
+            if 'Luxembourg' in mensa["city"]:
+                country_emoji = '🇱🇺 '
+            else:
+                country_emoji = ''
+
+            t = "/mensa%d %s%s" % (mensa["id"], country_emoji, mensa["name"])
             s.append(t)
 
         s = "\n\n".join(s)
@@ -1010,7 +1032,7 @@ help - Hilfe
             telepot.namedtuple.InlineKeyboardButton(
                 text=emoji.emojize(
                     item[0],
-                    use_aliases=True),
+                    language="alias"),
                 callback_data=item[1]) for item in buttons]
 
         keyboard = telepot.namedtuple.InlineKeyboardMarkup(
@@ -1137,8 +1159,8 @@ help - Hilfe
     def _handleMessage(self, msg, query_id=None):
         content_type, _, cid = telepot.glance(msg)  # content_type, chat_type, cid
 
-        # pprint(msg)
-        # pprint(telepot.glance(msg))
+        # pprint.pprint(msg)
+        # pprint.pprint(telepot.glance(msg))
 
         uid = None
         uname = None
@@ -1233,7 +1255,11 @@ help - Hilfe
             print("@%s: %s" % (uname_str, txt_demojized[0:150].encode(
                 'unicode-escape').decode('ascii')))
 
-            if admin and '/users' == txt:
+            if admin and '/clearcache' == txt:
+                self.openmensa.clearCache()
+                self.sendMessage(cid, "Cache cleared!")
+
+            elif admin and '/users' == txt:
                 text = []
                 peoples = self.users.getStats()
                 berlin = pytz.timezone('Europe/Berlin')
@@ -1276,7 +1302,7 @@ help - Hilfe
 
                 cat = ""
                 for x in peoples:
-                    if x[3] or x[4]:
+                    if x[4]:
                         continue
                     if x[2] != 0:
                         datetimeObj = datetime.datetime.fromtimestamp(
@@ -1354,10 +1380,17 @@ help - Hilfe
                         "I would really appreciate it :face_blowing_a_kiss:\n\n" +
                         "Just send me a message with the tag #feedback and I'll make sure to forward it to the development team." +
                         "These boys and girls speak %s" %
-                        self._flags(":<gb>::<es>::<de>::<fr>::<il>::<no>:"),
+                        self._flags(":<de>::<gb>::<es>::<fr>::<il>::<no>:"),
                         reply_markup=telepot.namedtuple.ForceReply(),
                         disable_notification=True)
                     self.sendMessage(cid, "Sent!")
+
+                except telepot.exception.TelegramError as e:
+                    self.users.deleteUser(param_userid)
+                    self.sendMessage(
+                        cid, "Could not ask for feedback:\n```%s```\nUser deleted." %
+                        str(e), parse_mode="Markdown")
+
                 except Exception as e:
                     self.sendMessage(
                         cid, "Could not ask for feedback:\n```%s```" %
@@ -1370,9 +1403,10 @@ help - Hilfe
                 self.sendMessage(
                     cid,
                     "This bot is also available on\n\nKik: https://kik.me/mensabot\n\nFacebook: https://m.me/openmensabot\n\nDiscord: https://discordapp.com/oauth2/authorize?client_id=456772415318523945&scope=bot")
-                self.sendMessage(
-                    cid,
-                    "See /help or /feedback for more information. Wanna take a look at my source? It's @ https://github.com/cvzi/openmensabot")
+
+                about_text = "See /help or /feedback for more information.\n`> You may also like to look at the source code <:snake::gear:/>\n> it's @` https://github.com/cvzi/openmensabot \n`> _`"
+
+                self.sendRawMessage(cid,emoji.emojize(about_text, language="alias"), parse_mode="Markdown")
 
             elif "/start" == txt:
                 self.sendMessage(
@@ -1466,14 +1500,14 @@ help - Hilfe
                     "\n" +
                     self.s.s("/feedback Hinterlass dem Entwicklerteam eine Nachricht\n") +
                     "\n" +
+                    self.s.s("/mydata Kopie deiner Daten gemäß GDPR\n") +
+                    "\n" +
                     self.s.s("/about Über diesen Bot"))
 
             elif "/shorthelp" == txt or "shorthelp" == txt or "/kurzhilfe" == txt or "kurzhilfe" == txt:
                 self.sendMessage(
                     cid,
-                    self.s.s("Sende mir einfach deine aktuelle Position oder schreibe mir den Namen deiner Stadt\n") +
-                    "\n" +
-                    self.s.s("Andere Befehle:\n") +
+                    self.s.s("Befehle:\n") +
                     "\n" +
                     self.s.s("/help Noch mehr Hilfe und mehr Befehle\n") +
                     "\n" +
@@ -1486,6 +1520,10 @@ help - Hilfe
                     self.s.s("/feedback Hinterlass dem Entwicklerteam eine Nachricht\n") +
                     "\n" +
                     self.s.s("/about Über diesen Bot"))
+
+                self.sendMessage(
+                    cid,
+                    self.s.s("Sende mir einfach deine aktuelle Position oder schreibe mir den Namen deiner Stadt"))
 
             elif "/settings" == txt or "settings" == txt or "einstellungen" == txt:
                 self.sendMessage(
@@ -1594,10 +1632,28 @@ help - Hilfe
 
             elif self._isEmoji(txt, ":panda_face:"):
                 self.sendRawMessage(
-                    cid, "http://zoo.sandiegozoo.org/cams/panda-cam")
+                    cid, "https://zoo.sandiegozoo.org/cams/panda-cam")
 
             elif self._isEmoji(txt, [":kiss_mark:", ":face_blowing_a_kiss:", ":smiling_face_with_heart-eyes:"]):
                 self.sendMessage(cid, ":face_blowing_a_kiss:")
+
+            elif self._isEmoji(txt, [":grinning_face:", ":smiling_face_with_open_mouth:", ":smiling_face_with_open_mouth_&_smiling_eyes:", ":grinning_face_with_smiling_eyes:",
+                                     ":smiling_face_with_open_mouth_&_closed_eyes:", ":slightly_smiling_face:", ":smiling_face_with_smiling_eyes:", ":winking_face:"]):
+                yt = [
+                    "https://youtu.be/ufaOgM9QYk0",  # ROLO DE LEON - PON LA OLLA
+                    "https://youtu.be/OeowI8_J7ck",  # Spice - So Mi Like It
+                    "https://youtu.be/g3QfsPFSseQ",  # TIMAYA & LISA VIOLA Remix - Shake up Your Bum Bum
+                    "https://youtu.be/i3Jv9fNPjgk",  # AZEALIA BANKS - 212 FT. LAZY JAY
+                    "https://youtu.be/5s3TFqChPYM",  # Chocolate Remix [Lesbian Reggaeton] - Como Me Gusta A Mi
+                    "https://youtu.be/5UV1aEkBgAk",  # Marwa Loud - Fallait pas
+                    "https://youtu.be/kXHj7feMIi0",  # JAHYANAI X BAMBY - WHO MAD AGAIN
+                ]
+                self.sendRawMessage(cid, random.choice(yt))
+
+            elif self._hasEmoji(txt, [":see-no-evil_monkey:", ":hear-no-evil_monkey:", ":speak-no-evil_monkey:", ":monkey:", ":monkey_face:", ":gorilla:"]):
+                self.sendMessage(
+                    cid,
+                    ':face_screaming_in_fear:\nhttps://wwf.panda.org/what_we_do/endangered_species/great_apes/gorillas/threats/')
 
             elif txt in ["hello", "hallo", "good day", "hey", "hi", "hei", "שלום", "shalom", "hola", "guten tag", "guten morgen", "guten abend"]:
                 self.sendMessage(cid, self.speak.hello())
@@ -1608,12 +1664,38 @@ help - Hilfe
             elif "/time" == txt:
                 self.sendMessage(cid, self.timeNow().strftime("%x %X"))
 
+            elif "/reboot" == txt:
+                self.sendMessage(cid, 'Rebooting...')
+
+            elif "/clear" == txt:
+                self.sendMessage(cid, 'Would you like to delete your account? Type: /off')
+
             elif "/off" == txt:
                 self.users.deleteUser(uid)
                 self.sendMessage(
                     cid,
                     self.s.s("*Account gelöscht* :confused_face:\n\nAlle persönlichen Daten auf meinem Server wurden entfernt."),
                     parse_mode="Markdown")
+
+            elif "/mydata" == txt:
+                mydata = self.users.getUser(uid)
+                if not mydata:
+                    self.sendMessage(
+                        cid,
+                        self.speak.apologize("We did not store any data (yet)"),
+                        parse_mode="Markdown")
+                else:
+                    pprint.pprint(mydata, indent=1, width=30)
+
+                    class DocumentFile:
+                        def __init__(self, name, content):
+                            self.name = name
+                            self.content = content
+                        def read(self):
+                            return self.content.encode("utf-8-sig")
+
+                    fileobj = DocumentFile("data%s.txt" % str(uid), pprint.pformat(mydata, indent=4, width=80))
+                    self.bot.sendDocument(cid, fileobj, caption=emoji.emojize("Copy of your data"))
 
             elif "/mensa" == txt or "/heute" == txt or "/today" == txt:
                 canteenid = 279
@@ -1756,38 +1838,53 @@ help - Hilfe
                 # /push HH
 
                 m = re.findall(r"(\d+)", txt)
-                at_time = datetime.time(*[int(i) for i in m[0:4]])
-
-                self.users.enablePush(uid, at_time)
-
-                in_h, in_m, in_s = self._timeTo(at_time)
-                remaining = self._formatTimeRemaining(in_h, in_m, in_s)
-
-                text = self.s.s(
-                    "Pushbenachrichtigungen aktiviert. Du erhältst um %s Uhr ") % at_time.strftime("%X")
-                text += self.s.s("automatisch den Speiseplan deiner Favoriten geschickt.\n") + "\n"
-                text += self.s.s("Folgende Befehle könnten nützlich sein:") + "\n"
-                text += self.s.s("/favoriten um deine aktuellen Favoriten anzusehen.\n")
-                text += self.s.s(
-                    "/pushSilently um den Benachrichtigungston für die Speisepläne auszuschalten.\n")
-                text += self.s.s(
-                    "/pushLoudly um den Benachrichtigungston für die Speisepläne einzuschalten.\n")
-                text += self.s.s(
-                    "/push _hh:mm_ um die Uhrzeit für die Benachrichtigungen festzulegen.\n")
-                text += self.s.s(
-                    "/disablepush um die Pushbenachrichtigungen wieder auszuschalten.\n") + "\n"
-                text += self.s.s("Nächste Nachricht in ungefähr %s.") % remaining
-
-                self.sendMessage(cid, text, parse_mode="Markdown")
-
-                favorites = self.users.getFavorites(uid)
-                if len(favorites) == 0:
+                try:
+                    at_time = datetime.time(*[int(i) for i in m[0:4]])
+                except ValueError:
                     self.sendMessage(
                         cid,
-                        self.s.s("Du hast noch keine Favoriten.\n") +
-                        self.speak.advice(
-                            self.s.s("setze Favoriten mit /merke _id_\noder mit dem :red_heart: unter dem Speiseplan")),
+                        self.s.s("/push _hh:mm_ um die Uhrzeit für die Benachrichtigungen festzulegen.\n"),
                         parse_mode="Markdown")
+                    at_time = False
+
+                if at_time < datetime.time(8, 0) or at_time > datetime.time(14, 29):
+                    self.sendMessage(
+                        cid,
+                         self.speak.apologize(self.s.s("Die Uhrzeit für Benachrichtigungen is momentan auf 8:00 bis 14:30 begrenzt")),
+                        parse_mode="Markdown")
+                    at_time = False
+
+                if at_time:
+                    self.users.enablePush(uid, at_time)
+
+                    in_h, in_m, in_s = self._timeTo(at_time)
+                    remaining = self._formatTimeRemaining(in_h, in_m, in_s)
+
+                    text = self.s.s(
+                        "Pushbenachrichtigungen aktiviert. Du erhältst um %s Uhr ") % at_time.strftime("%X")
+                    text += self.s.s("automatisch den Speiseplan deiner Favoriten geschickt.\n") + "\n"
+                    text += self.s.s("Folgende Befehle könnten nützlich sein:") + "\n"
+                    text += self.s.s("/favoriten um deine aktuellen Favoriten anzusehen.\n")
+                    text += self.s.s(
+                        "/pushSilently um den Benachrichtigungston für die Speisepläne auszuschalten.\n")
+                    text += self.s.s(
+                        "/pushLoudly um den Benachrichtigungston für die Speisepläne einzuschalten.\n")
+                    text += self.s.s(
+                        "/push _hh:mm_ um die Uhrzeit für die Benachrichtigungen festzulegen.\n")
+                    text += self.s.s(
+                        "/disablepush um die Pushbenachrichtigungen wieder auszuschalten.\n") + "\n"
+                    text += self.s.s("Nächste Nachricht in ungefähr %s.") % remaining
+
+                    self.sendMessage(cid, text, parse_mode="Markdown")
+
+                    favorites = self.users.getFavorites(uid)
+                    if len(favorites) == 0:
+                        self.sendMessage(
+                            cid,
+                            self.s.s("Du hast noch keine Favoriten.\n") +
+                            self.speak.advice(
+                                self.s.s("setze Favoriten mit /merke _id_\noder mit dem :red_heart: unter dem Speiseplan")),
+                            parse_mode="Markdown")
 
             elif "/disablepush" == txt or "/pushoff" == txt:
                 self.users.disablePush(uid)
@@ -1912,20 +2009,29 @@ help - Hilfe
                         self.s.s("Preise in Speiseplänen deaktiviert :money_with_wings:")),
                     parse_mode="Markdown")
 
-            elif re.search(r"/?(map|karte)\s*(\d+)", txt):
-                # /map$id
-                m = re.search(r"/?(map|karte)\s*(\d+)", txt)
-                canteenid = int(m.group(2))
+            elif re.search(r"/?(map|karte)\s*(\d+|[a-z]{2,11})", txt):
+                # /map$code
+                m = re.search(r"/?(map|karte)\s*(\d+|[a-z]{2,11})", txt)
+                try:
+                    canteenid = int(m.group(2))
+                except ValueError:
+                    if m.group(2) in self.openmensa.shortnamesName2Id:
+                        canteenid = self.openmensa.shortnamesName2Id[m.group(2)]
+                    else:
+                        canteenid = 0
 
-                mensa = self.openmensa.getMensa(canteenid=canteenid)
+                if canteenid:
+                    mensa = self.openmensa.getMensa(canteenid=canteenid)
+                else:
+                    mensa = None
 
                 address = ""
 
                 if not mensa:
                     self.sendMessage(
                         cid, self.speak.apologize(
-                            self.s.s("die Mensa %d kann ich nicht finden") %
-                            canteenid))
+                            self.s.s("die Mensa %s kann ich nicht finden") %
+                            str(canteenid)))
                 elif "coordinates" not in mensa:
                     if "address" not in mensa:
                         self.sendMessage(
@@ -1934,7 +2040,7 @@ help - Hilfe
                                 mensa["name"]))
                     else:
                         address = mensa["address"]
-                        googlemaps = "http://maps.google.com/maps?q=%s&z=15" % urllib.parse.quote_plus(
+                        googlemaps = "https://maps.google.com/maps?q=%s&z=15" % urllib.parse.quote_plus(
                             address)
                         self.sendMessage(
                             cid, "%s\n[%s](%s)" %
@@ -1942,7 +2048,7 @@ help - Hilfe
                 else:
                     if "address" in mensa:
                         address = mensa["address"]
-                        # googlemaps = "http://maps.google.com/maps?q=%s&z=15" % urllib.parse.quote_plus(address);
+                        # googlemaps = "https://maps.google.com/maps?q=%s&z=15" % urllib.parse.quote_plus(address);
                         # self.sendMessage(cid, "[%s](%s)" % (address, googlemaps), parse_mode="Markdown")
                     self.bot.sendVenue(
                         cid,
@@ -1951,26 +2057,63 @@ help - Hilfe
                         title=mensa["name"],
                         address=address)
 
-            elif "/mensaimage" == txt or "/image" == txt:
-                self.sendMessage(
-                    cid,
-                    emoji.emojize(
-                        self.s.s("Funktion: Speiseplan als Bild\nBefehlsformat: /image{MensaID} /mensaimage{MensaID}\n\nZum Beispiel: /image123")),
-                    parse_mode="Markdown")
 
-            elif re.search(r"/?mensaimage\s*(\d+)", txt) or re.search(r"/?image\s*(\d+)", txt):
-                # /mensaimage$id /image$id
-                # TODO Sorry, this part is not open source :(
-                pass
+#            elif "/mensaimage" == txt or "/image" == txt:
+#                self.sendMessage(
+#                    cid,
+#                    emoji.emojize(
+#                        self.s.s("Funktion: Speiseplan als Bild\nBefehlsformat: /image{MensaID} /mensaimage{MensaID}\n\nZum Beispiel: /image123")),
+#                    parse_mode="Markdown")
+#
+#            elif re.search(r"/?mensaimage\s*(\d+|[a-z]{2,11})", txt) or re.search(r"/?image\s*(\d+|[a-z]{2,11})", txt):
+#                # /mensaimage$code /image$code
+#
+#                s = txt[txt.index('image')+5:]
+#                m = [x for x in re.findall(r"(\d+|[a-z]{2,11})", s)]
+#
+#                for canteencode in m:
+#                    try:
+#                        canteenid = int(canteencode)
+#                    except ValueError:
+#                        if canteencode in self.openmensa.shortnamesName2Id:
+#                            canteenid = self.openmensa.shortnamesName2Id[canteencode]
+#                        else:
+#                            continue
+#
+#                    url = "https://kikmensabot.herokuapp.com/image.png?l=%s&mid=%d" % (urllib.parse.quote_plus(
+#                        self.users.getLanguage(uid, self.speak.getDefaultLanguage())), canteenid)
+#                    url = signurl.sign_url(
+#                        url, client_secret="_z3nYPjeSxtF1cWG-LrEOLTnfDg=")
+#                    reloadButton = (
+#                        ":counterclockwise_arrows_button:",
+#                        "/mensa%d" %
+#                        canteenid)
+#                    self.bot.sendPhoto(
+#                        cid, url, reply_markup=self._inlineKeyBoard(reloadButton))
 
-            elif re.search(r"/?mensa\s*(\d+)", txt) or re.search(r"/?heute\s*(\d+)", txt):
-                # /mensa$id /heute$id
-                m = [int(x) for x in re.findall(r"(\d+)", txt)]
 
-                for canteenid in m:
+            elif re.search(r"/?mensa\s*(\d+|[a-z]{2,11})", txt) or re.search(r"/?heute\s*(\d+|[a-z]{2,11})", txt):
+                # /mensa$code /heute$code
+                if "heute" in txt:
+                    s = txt[txt.index('heute')+5:]
+                else:
+                    s = txt[txt.index('mensa')+5:]
+
+                m = [x for x in re.findall(r"(\d+|[a-z]{2,11})", s)]
+
+                canteenid = 0
+                for canteencode in m:
+                    try:
+                        canteenid = int(canteencode)
+                    except ValueError:
+                        if canteencode in self.openmensa.shortnamesName2Id:
+                            canteenid = self.openmensa.shortnamesName2Id[canteencode]
+                        else:
+                            continue
+
                     self.sendMensaMeals(cid, canteenid=canteenid)
-
-                self.users.setLastCanteen(uid, canteenid)
+                if canteenid:
+                    self.users.setLastCanteen(uid, canteenid)
 
             elif re.search(r"/?mensanext\s*(\d+)[_|\s]+(\d+)", txt):
                 # /mensaNext $id $offset
@@ -1983,17 +2126,26 @@ help - Hilfe
 
                 self.users.setLastCanteen(uid, canteenid)
 
-            elif re.search(r"/?mensanext\s*(\d+)", txt) or re.search(r"/?morgen\s*(\d+)", txt):
-                # /mensaNext$id
-                m = [int(x) for x in re.findall(r"(\d+)", txt)]
+            elif re.search(r"/?mensanext\s*(\d+|[a-z]{2,11})", txt) or re.search(r"/?morgen\s*(\d+|[a-z]{2,11})", txt):
+                # /mensaNext$code
+                m = [x for x in re.findall(r"(\d+|[a-z]{2,11})", txt)]
 
-                for canteenid in m:
+                canteenid = 0
+                for canteencode in m:
+                    try:
+                        canteenid = int(canteencode)
+                    except ValueError:
+                        if canteencode in self.openmensa.shortnamesName2Id:
+                            canteenid = self.openmensa.shortnamesName2Id[canteencode]
+                        else:
+                            continue
                     self.sendMensaMeals(cid, canteenid=canteenid, offsetDays=1)
 
-                self.users.setLastCanteen(uid, canteenid)
+                if canteenid:
+                    self.users.setLastCanteen(uid, canteenid)
 
             elif re.search(r"^\s*/?m(?:ensa|\s)\s*(\w+)", txt):
-                # /mensa$shortname
+                # /mensa$code
                 m = re.search(r"/?m(?:ensa|\s)\s*(\w+)", txt)
 
                 try:
@@ -2020,13 +2172,32 @@ help - Hilfe
 
                 query = m.group(1)
 
-                self.sendMensaFind(cid, query=query)
+                if query and query.strip():
 
-            elif re.search(r"/?merke\s*(\d+)", txt):
-                # /merke$id
-                m = re.search(r"/?merke\s*(\d+)", txt)
+                    if "{" in query and "}" in query:
+                        self.sendMessage(
+                            cid, self.s.s("Befehlformat: /findeHamburg - Sucht Mensen in Hamburg") + "\n" +
+                                self.s.s("oder schreibe mir einfach nur: Hamburg"))
+                        query = query.replace("{"," ").replace("}", " ").strip()
 
-                canteenid = int(m.group(1))
+                    self.sendMensaFind(cid, query=query)
+                else:
+                    self.sendMessage(
+                        cid, self.s.s("Befehlformat: /findeHamburg - Sucht Mensen in Hamburg") + "\n" +
+                            self.s.s("oder schreibe mir einfach nur: Hamburg"))
+
+
+            elif re.search(r"/?merke\s*(\d+|[a-z]{2,11})", txt):
+                # /merke$code
+                m = re.search(r"/?merke\s*(\d+|[a-z]{2,11})", txt)
+
+                try:
+                    canteenid = int(m.group(1))
+                except ValueError:
+                    if m.group(1) in self.openmensa.shortnamesName2Id:
+                        canteenid = self.openmensa.shortnamesName2Id[m.group(1)]
+                    else:
+                        canteenid = 0
 
                 shortname = self.openmensa.getShortName(canteenid)
                 if shortname:
@@ -2036,22 +2207,39 @@ help - Hilfe
                     self.sendMessage(
                         cid, self.speak.success(
                             self.s.s("gespeichert")))
+
+                    if len(self.users.getFavorites(uid)) == 1 and not self.users.getPush(uid):
+                        # First favorite and no push yet:
+                        self.sendMessage(
+                            cid, self.s.s("Falls du täglich das Menü bekommen möchtest, benutze /push um Pushbenachrichtigungen zu aktivieren"))
+
                 else:
                     self.sendMessage(
                         cid, self.speak.apologize(
                             self.s.s("die Mensa %d kann ich nicht finden") %
                             canteenid))
 
-            elif re.search(r"/?vergiss\s*(\d+)", txt):
-                # /vergiss$id
-                m = re.search(r"/?vergiss\s*(\d+)", txt)
+            elif re.search(r"/?vergiss\s*(\d+|[a-z]{2,11})", txt):
+                # /vergiss$code
+                m = re.search(r"/?vergiss\s*(\d+|[a-z]{2,11})", txt)
 
-                canteenid = int(m.group(1))
+                try:
+                    canteenid = int(m.group(1))
+                except ValueError:
+                    if m.group(1) in self.openmensa.shortnamesName2Id:
+                        canteenid = self.openmensa.shortnamesName2Id[m.group(1)]
+                    else:
+                        canteenid = 0
 
                 self.users.removeFavorite(uid, canteenid)
 
                 self.sendMessage(cid,
                                  self.speak.success(self.s.s("entfernt")))
+
+            elif txt in self.openmensa.specialNames:
+                canteenid = self.openmensa.specialNames[txt]
+                self.sendMensaMeals(cid, canteenid=canteenid)
+                self.users.setLastCanteen(uid, canteenid)
 
             elif re.search(r"^\s*(\d+)\s*$", txt):
                 # $id
@@ -2104,6 +2292,10 @@ help - Hilfe
                 # Probably a message from the bot itself, via an inline
                 # callback, ignore the message
                 print("Message ignored, starts with special emoji")
+                pass
+
+            elif txt_demojized == "invited to voice chat":
+                print("Message 'invited to voice chat' ignored")
                 pass
 
             elif len(txt) > 0:
@@ -2212,7 +2404,7 @@ help - Hilfe
 
             self.bot.editMessageText(
                 msg_identifier=inline_message_id,
-                text=emoji.emojize(ret["text"], use_aliases=True),
+                text=emoji.emojize(ret["text"], language="alias"),
                 parse_mode=ret["parse_mode"],
                 reply_markup=getInlineInlineKeyBoard(canteenid, 0))
 
@@ -2228,7 +2420,7 @@ help - Hilfe
 
             self.bot.editMessageText(
                 msg_identifier=inline_message_id,
-                text=emoji.emojize(ret["text"], use_aliases=True),
+                text=emoji.emojize(ret["text"], language="alias"),
                 parse_mode=ret["parse_mode"],
                 reply_markup=getInlineInlineKeyBoard(canteenid, offsetDays))
 
@@ -2244,7 +2436,7 @@ help - Hilfe
 
             self.bot.editMessageText(
                 msg_identifier=inline_message_id,
-                text=emoji.emojize(ret["text"], use_aliases=True),
+                text=emoji.emojize(ret["text"], language="alias"),
                 parse_mode=ret["parse_mode"],
                 reply_markup=getInlineInlineKeyBoard(canteenid, offsetDays))
 
@@ -2258,7 +2450,7 @@ help - Hilfe
             msg, flavor='callback_query')  # query_id, from_id, query_data
 
         # try:
-        #     pprint(msg)
+        #     pprint.pprint(msg)
         # except:
         #     pass
 
@@ -2379,10 +2571,10 @@ help - Hilfe
                     articles = [Article(
                         id='canteenMeals%d' % canteenid,
                         title=self.__escapeMarkdown(mensa["name"]),
-                        description=emoji.emojize(preview, use_aliases=True),
+                        description=emoji.emojize(preview, language="alias"),
                         reply_markup=getInlineInlineKeyBoard(canteenid),
                         input_message_content=TextMessageContent(
-                            message_text=emoji.emojize(text, use_aliases=True),
+                            message_text=emoji.emojize(text, language="alias"),
                             parse_mode='Markdown'
                         )
                     )]
@@ -2414,11 +2606,11 @@ help - Hilfe
                     articles = [Article(
                         id='canteenMeals%d' % mensa["id"],
                         title=self.__escapeMarkdown(mensa["name"]),
-                        description=emoji.emojize(preview, use_aliases=True),
+                        description=emoji.emojize(preview, language="alias"),
                         reply_markup=getInlineInlineKeyBoard(mensa["id"]),
                         url='https://openmensa.org/c/%d' % mensa["id"],
                         input_message_content=TextMessageContent(
-                            message_text=emoji.emojize(text, use_aliases=True),
+                            message_text=emoji.emojize(text, language="alias"),
                             parse_mode='Markdown'
                         )
                     )]
@@ -2458,7 +2650,7 @@ help - Hilfe
                                 input_message_content=TextMessageContent(
                                     message_text=emoji.emojize(
                                         text,
-                                        use_aliases=True),
+                                        language="alias"),
                                     parse_mode='Markdown'))
                             articles.append(a)
                         else:
@@ -2470,11 +2662,11 @@ help - Hilfe
                                 id='canteenMeals%d' %
                                 mensa["id"], title=self.__escapeMarkdown(
                                     mensa["name"]), description=emoji.emojize(
-                                    preview, use_aliases=True), reply_markup=getInlineInlineKeyBoard(
+                                    preview, language="alias"), reply_markup=getInlineInlineKeyBoard(
                                     mensa["id"]), url='https://openmensa.org/c/%d' %
                                 mensa["id"], input_message_content=TextMessageContent(
                                     message_text=emoji.emojize(
-                                        text, use_aliases=True), parse_mode='Markdown'))
+                                        text, language="alias"), parse_mode='Markdown'))
                             articles.append(a)
 
                 elif len(mensas) == 0:
@@ -2577,7 +2769,7 @@ help - Hilfe
     def stop(self):
         self.__stopFlag[0] = True
 
-    def run(self, webhookURL):
+    def run(self, webhookURL, setWebhookURL=True):
         if "Running" in self.status:
             print("Already running")
             return self._webhook
@@ -2593,13 +2785,14 @@ help - Hilfe
             'inline_query': self._handleInlineQuery
         })
         self._webhook.run_as_thread()
-        self.bot.setWebhook(webhookURL)
+        if setWebhookURL:
+            self.bot.setWebhook(webhookURL)
 
         print("Running@" + webhookURL)
         print(emoji.demojize(str(self.bot.getMe())).encode(
             'unicode-escape').decode('ascii'))
 
-        if self.informStatusTo:
+        if False and self.informStatusTo:
             try:
                 self.sendMessage(
                     self.informStatusTo,
@@ -2612,6 +2805,12 @@ help - Hilfe
 
         return self._webhook
 
+    def setWebhook(self, webhookURL):
+        if "Running" not in self.status:
+            self.bot = telepot.Bot(self._telegram_http_token)
+
+        return self.bot.setWebhook(webhookURL)
+
     def deleteWebhook(self):
         if "Running" in self.status:
             print("Already running, cannot delete webhook")
@@ -2621,6 +2820,9 @@ help - Hilfe
         return self.bot.deleteWebhook()
 
     def worker(self):
+        """ Continously running task to send push messages
+        Alternatively use cronDoWork() to only run a periodic tast
+        """
         if "Working" in self.status:
             print("Already working")
             return
@@ -2637,39 +2839,29 @@ help - Hilfe
 
             def run(self):
                 stopfile = os.path.join(
-                    os.getenv(
-                        "OPENSHIFT_DATA_DIR",
-                        "data"),
-                    'mensabot/mensabotstop')
+                    os.getenv("DATA_DIR", "data"), 'mensabot/mensabotstop')
                 while True:
                     if stopFlag[0] or os.path.isfile(stopfile):
                         self.__myMensaBot.status += " StoppingWorker"
                         print("Stopping worker")
                         break
-                    new_objs = self.__myMensaBot.users.getPendingPushObjects(
-                        self.__myMensaBot.timeNow().time())
+                    new_objs = self.__myMensaBot.users.getPendingPushObjects(self.__myMensaBot.timeNow())
                     self.tosend_objs.extend(new_objs)
 
                     for i in range(min(len(self.tosend_objs), 20)):
                         obj = self.tosend_objs.pop(0)
                         print("Push object: %s" % str(obj))
                         uid = obj[0]
-                        self.__myMensaBot.setLanguage(
-                            self.__myMensaBot.users.getLanguage(
-                                uid, self.__myMensaBot.speak.getDefaultLanguage()))
+                        self.__myMensaBot.setLanguage(self.__myMensaBot.users.getLanguage(uid, self.__myMensaBot.speak.getDefaultLanguage()))
                         silent = self.__myMensaBot.users.isPushSilent(uid)
                         for canteenid in obj[1]:
-                            day, meals, ret = self.__myMensaBot.openmensa.getNextMeal(
-                                canteenid)
-                            if ret and len(meals) > 0 and day is not None and datetime.datetime.strptime(
-                                    day, '%Y-%m-%d').date() == self.__myMensaBot.timeNow().date():
+                            day, meals, ret = self.__myMensaBot.openmensa.getNextMeal(canteenid)
+                            if ret and len(meals) > 0 and day is not None and datetime.datetime.strptime(day, '%Y-%m-%d').date() == self.__myMensaBot.timeNow().date():
                                 try:
                                     self.__myMensaBot.sendMensaMeals(
                                         uid, canteenid, disableNotification=silent)
                                 except Exception as e:
-                                    print(
-                                        "Could not send push message: uid=%s, %s" %
-                                        (str(uid), str(e)))
+                                    print("Could not send push message: uid=%s, %s" % (str(uid), str(e)))
 
                     time.sleep(20)
 
@@ -2685,3 +2877,69 @@ help - Hilfe
         self.myWorker = MyWorker(self)
         self.myWorker.daemon = True
         self.myWorker.start()
+
+    def cronDoWork(self):
+        """ Alternative to using a continously running task with worker()
+        This function can be called periodically and will push the objects since the last call (or since the start of the bot)
+        Return False if worker is already running, otherwise [number_successfully_sent_objects, number_found_objects]
+        Cronexpression: 2,32 7-14 ? * MON-SAT      Minute:2 and 32, hour:7 to 14 (UTC+0, i.e. 8 to 15), day:ignore, month:all, weekday: Mon to Sat
+        curl -X POST %TEMPORIZE_URL%/v1/events/{CRON}/{URL}
+        """
+
+        if "Working" in self.status:
+            print("cronDoWork: Worker is running -> Doing nothing")
+            return False
+
+        class MyCronWorker(threading.Thread):
+            def __init__(self, myMensaBot):
+                super().__init__()
+                self.startTime = time.time()
+                self.__myMensaBot = myMensaBot
+                self.tosend_objs = self.__myMensaBot.users.getPendingPushObjects(self.__myMensaBot.timeNow())
+
+            def run(self):
+                it = self.__myMensaBot
+                sent_counter = [0, 0]
+                skip_users = []  # Users that blocked the bot
+
+                while len(self.tosend_objs) > 0:
+                    for i in range(min(len(self.tosend_objs), 20)):  # Send next 20 messages
+                        obj = self.tosend_objs.pop(0)
+                        sent_counter[1] += 1
+                        print("Push object: %s" % str(obj))
+                        uid = obj[0]
+
+                        if uid in skip_users:
+                            continue
+
+                        it.setLanguage(it.users.getLanguage(uid, it.speak.getDefaultLanguage()))
+                        silent = it.users.isPushSilent(uid)
+                        for canteenid in obj[1]:
+                            if uid in skip_users:
+                                continue
+                            day, meals, ret = it.openmensa.getNextMeal(canteenid)
+                            if ret and len(meals) > 0 and day is not None and datetime.datetime.strptime(day, '%Y-%m-%d').date() == it.timeNow().date():
+                                try:
+                                    it.sendMensaMeals(uid, canteenid, disableNotification=silent)
+                                    sent_counter[0] += 1
+                                except (telepot.exception.BotWasBlockedError, telepot.exception.BotWasKickedError, telepot.exception.TelegramError) as e:
+                                    print("User blocked or kicked bot. Deleting user: %s" % str(uid))
+                                    it.users.deleteUser(uid)
+                                    skip_users.add(uid)
+                                except Exception as e:
+                                    print("Could not send push message: uid=%s, %s" % (str(uid), str(e)))
+                    if len(self.tosend_objs) > 0:
+                        time.sleep(2)  # Wait 2 second after 20 messages
+
+                endTime = time.time()
+                m, s = divmod(endTime - self.startTime, 60)
+                h, m = divmod(m, 60)
+                time_str = "%s%02dm%02ds" % ((str(h)+"h") if h else "", m, s)
+                print("Finished cron job (%s): sent_counter=%r, len(skip_users)=%r" % (time_str , sent_counter, len(skip_users)))
+
+        self.myCronWorker = MyCronWorker(self)
+        n = len(self.myCronWorker.tosend_objs)
+        self.myCronWorker.daemon = True
+        self.myCronWorker.start()
+
+        return n

@@ -1,8 +1,7 @@
 # openmensabot
-Telegram bot, shows canteen/mensa menus from openmensa.org. Supports daily push messages.  
+Telegram bot, shows canteen/mensa menus from openmensa.org. Supports daily push messages.
 
-Live on telegram: [https://telegram.me/OpenMensaRobot](https://telegram.me/OpenMensaRobot)  
-This bot runs on Red Hat Openshift 3.
+This bot ran on Heroku. Python 3.10
 
 ## Run it locally
 You need to set the environment variable `TELEGRAM_TOKEN` or hard-code it in [wsgi.py](https://github.com/cvzi/openmensabot/blob/master/wsgi.py#L27-L30) 
